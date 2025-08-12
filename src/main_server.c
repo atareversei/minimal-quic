@@ -3,6 +3,8 @@
 
 int main() {
     printf("Server started\n");
+    int i = udp_socket_create();
+    printf("%d\n", i);
 
     // TODO:
     // 1. Create and bind UDP socket
