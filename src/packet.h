@@ -7,7 +7,8 @@
 #define MAX_PAYLOAD_SIZE 1024
 
 typedef struct {
-  uint64_t connection_id;
+  uint64_t dcid;
+  uint64_t scid;
   uint32_t packet_number;
   uint8_t payload[MAX_PAYLOAD_SIZE];
   size_t payload_len;
