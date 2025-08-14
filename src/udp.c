@@ -6,6 +6,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+// TODO: Only IPv4 is supported; IPv6 support is missing.
+// TODO: No handling of packet loss, reordering, or fragmentation is implemented.
+// TODO: Currently blocking sockets are used; non-blocking or select/poll could be added.
+
 int udp_socket_create() {
   int sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0) {
@@ -53,7 +57,6 @@ int udp_recv(int sock, void *buf, size_t maxlen, char *src_ip, int *src_port) {
     return -1;
   }
   if (src_ip) {
-    // TODO: not thread-safe
     strcpy(src_ip, inet_ntoa(src_addr.sin_addr));
   }
   if (src_port) {

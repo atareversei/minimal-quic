@@ -5,6 +5,12 @@
 #include "udp.h"
 #include "packet.h"
 
+// TODO: ACK packet number is just pkt.packet_number + 1; real QUIC tracks per-connection state.
+// TODO: Only handles one packet at a time per connection; multiple in-flight packets are not tracked.
+// TODO: No retransmission, congestion control, or connection timeout handling.
+// TODO: Single-threaded; a real server would need async I/O or threads for multiple clients.
+// TODO: Payload is printed as string; binary payloads may contain null bytes and need careful handling.
+
 const int PORT = 4546;
 const int MAX_BUF_SIZE = 1500;
 
@@ -53,6 +59,6 @@ int main() {
     int send_len = packet_encode(&ack_pkt, send_buf, sizeof(send_buf));
     udp_send(sock, send_buf, send_len, src_ip, src_port);
   }
-  
+
   return 0;
 }

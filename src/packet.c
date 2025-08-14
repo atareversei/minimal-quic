@@ -2,6 +2,11 @@
 #include <string.h>
 #include <arpa/inet.h>
 
+// TODO: The minimal packet only includes DCID, SCID, packet number, and payload.
+// TODO: No variable-length encoding, encryption, or authentication is implemented.
+// TODO: Payload length is inferred from UDP packet length; real QUIC encodes length explicitly.
+// TODO: No validation of packet numbers across multiple packets per connection.
+
 size_t packet_encode(const quic_packet_t *pkt, uint8_t *buf, size_t bufsize) {
     if (bufsize < 8 + 8 + 4 + pkt->payload_len) {
         return 0;
