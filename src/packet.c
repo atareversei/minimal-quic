@@ -12,13 +12,13 @@ size_t packet_encode(const quic_packet_t *pkt, uint8_t *buf, size_t bufsize) {
         return 0;
     }
 
-    uint64_t dcid_n = htobe64(pkt->dcid);
+    const uint64_t dcid_n = htobe64(pkt->dcid);
     memcpy(buf, &dcid_n, 8);
 
-    uint64_t scid_n = htobe64(pkt->scid);
+    const uint64_t scid_n = htobe64(pkt->scid);
     memcpy(buf + 8, &scid_n, 8);
 
-    uint32_t pkt_num_n = htonl(pkt->packet_number);
+    const uint32_t pkt_num_n = htonl(pkt->packet_number);
     memcpy(buf + 16, &pkt_num_n, 4);
 
     memcpy(buf + 20, pkt->payload, pkt->payload_len);

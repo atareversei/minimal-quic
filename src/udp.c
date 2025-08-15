@@ -11,7 +11,7 @@
 // TODO: Currently blocking sockets are used; non-blocking or select/poll could be added.
 
 int udp_socket_create() {
-  int sock = socket(AF_INET, SOCK_DGRAM, 0);
+  const int sock = socket(AF_INET, SOCK_DGRAM, 0);
   if (sock < 0) {
     perror("socket creation failed");
     return -1;
@@ -19,9 +19,8 @@ int udp_socket_create() {
   return sock;
 }
 
-int udp_bind(int sock, const char *ip, int port) {
-  struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
+int udp_bind(const int sock, const char *ip, int port) {
+  struct sockaddr_in addr = {0};
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);
   addr.sin_addr.s_addr = inet_addr(ip);
@@ -34,8 +33,7 @@ int udp_bind(int sock, const char *ip, int port) {
 }
 
 int udp_send(int sock, const void *buf, size_t len, const char *ip, int port) {
-  struct sockaddr_in dest_addr;
-  memset(&dest_addr, 0, sizeof(dest_addr));
+  struct sockaddr_in dest_addr = {0};
   dest_addr.sin_family = AF_INET;
   dest_addr.sin_port = htons(port);
   dest_addr.sin_addr.s_addr = inet_addr(ip);
@@ -48,10 +46,10 @@ int udp_send(int sock, const void *buf, size_t len, const char *ip, int port) {
   return (int)sent;
 }
 
-int udp_recv(int sock, void *buf, size_t maxlen, char *src_ip, int *src_port) {
+int udp_recv(const int sock, void *buf, size_t maxlen, char *src_ip, int *src_port) {
   struct sockaddr_in src_addr;
   socklen_t addrlen = sizeof(src_addr);
-  ssize_t received = recvfrom(sock, buf, maxlen, 0, (struct sockaddr*)&src_addr, &addrlen);
+  const ssize_t received = recvfrom(sock, buf, maxlen, 0, (struct sockaddr*)&src_addr, &addrlen);
   if (received < 0) {
     perror("recvfrom failed");
     return -1;
