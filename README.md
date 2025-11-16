@@ -1,36 +1,7 @@
 # minimal-quic-c
 
-A minimal QUIC protocol implementation in C, designed as a learning project  
+A minimal QUIC protocol implementation in Go, designed as a learning project  
 to explore UDP sockets, packet encoding/decoding, and connection basics.
-
-## Project Structure
-
-- `src/` — source code for client, server, UDP helper, and packet handling
-- `tests/` — unit tests (planned)
-- `examples/` — minimal demo programs
-- `Makefile` — build client and server executables
-
-## Getting Started
-
-1. Run `make` to build client and server
-
-```bash
-make
-```
-
-2. Run server:
-
-```bash
-./bin/server
-```
-
-3. Run client (in another terminal):
-
-```bash
-./bin/client
-```
-
-4. TODO: Client will send a simple packet to the server, which prints it.
 
 ## Next Steps
 
