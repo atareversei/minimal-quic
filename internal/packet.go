@@ -1,7 +1,10 @@
 package internal
 
 import (
+	"encoding/binary"
 	"errors"
+	"net"
+	"time"
 )
 
 // VarInt represents a decoded QUIC variable-length integer.
@@ -14,10 +17,10 @@ type VarInt struct {
 type PacketHeader struct {
 	IsLongHeader           bool
 	Type                   uint8
-	Version                int32
-	DCID                   uint64
-	SCID                   uint64
-	PacketNumber           uint32
+	Version                uint32
+	DCID                   []byte
+	SCID                   []byte
+	PacketNumber           uint64
 	PacketNumberLength     int
 	HeaderLen              int
 	PayloadLength          uint64
@@ -30,13 +33,24 @@ type Packet struct {
 	Payload []byte
 }
 
+type Frame struct {
+	Type byte
+	Data []byte
+}
+
+type ParsedPacket struct {
+	Addr        *net.UDPAddr
+	Packet      Packet
+	ReceiveTime time.Time
+}
+
 var (
 	ErrNotEnoughData  = errors.New("not enough bytes")
 	ErrVarIntTooLarge = errors.New("variant length is larger than available bytes")
 	ErrMalformed      = errors.New("malformed packet")
 )
 
-// DecodeVarInt decodes a QUIC variant from the front of data.
+// DecodeVarInt decodes a QUIC VarInt from the front of data.
 // Returns the decoded VarInt and an error if buffer is too small.
 func DecodeVarInt(data []byte) (VarInt, error) {
 	if len(data) == 0 {
@@ -83,5 +97,128 @@ func DecodeVarInt(data []byte) (VarInt, error) {
 	}
 }
 
-//func DecodeQuicPacket(data []byte) (*Packet, error)
-//func DecodeQuicPacketHeader(data []byte) (*PacketHeader, int, error)
+// DecodePacketHeader decodes the QUIC header from data and returns the PacketHeader
+// and the number of bytes consumed up to (but not including) the packet number.
+// For long headers it parses Version, DCID, SCID, TokenLength (skips token),
+// and PayloadLength (VarInt). For short headers it returns a minimal header
+// with HeaderLen = 1 (caller must handle DCID by context).
+func DecodePacketHeader(data []byte) (*PacketHeader, int, error) {
+	if len(data) < 1 {
+		return nil, 0, ErrNotEnoughData
+	}
+
+	first := data[0]
+	isLong := (first >> 7) == 1
+	pnLen := int(first&0x03) + 1
+
+	h := &PacketHeader{
+		IsLongHeader:       isLong,
+		PacketNumberLength: pnLen,
+		HeaderLen:          1,
+	}
+
+	if !isLong {
+		return h, h.HeaderLen, nil
+	}
+
+	idx := 1
+
+	if len(data) < idx+4 {
+		return nil, 0, ErrNotEnoughData
+	}
+	h.Version = binary.BigEndian.Uint32(data[idx : idx+4])
+	idx += 4
+
+	if len(data) < idx+1 {
+		return nil, 0, ErrNotEnoughData
+	}
+	dcidLen := int(data[idx])
+	idx++
+	if len(data) < idx+dcidLen {
+		return nil, 0, ErrNotEnoughData
+	}
+	if dcidLen > 0 {
+		h.DCID = append([]byte(nil), data[idx:idx+dcidLen]...)
+	} else {
+		h.DCID = nil
+	}
+	idx += dcidLen
+
+	if len(data) < idx+1 {
+		return nil, 0, ErrNotEnoughData
+	}
+	scidLen := int(data[idx])
+	idx++
+	if len(data) < idx+scidLen {
+		return nil, 0, ErrNotEnoughData
+	}
+	if scidLen > 0 {
+		h.SCID = append([]byte(nil), data[idx:idx+scidLen]...)
+	} else {
+		h.SCID = nil
+	}
+	idx += scidLen
+
+	if len(data) < idx+1 {
+		return nil, 0, ErrNotEnoughData
+	}
+	tokenVar, err := DecodeVarInt(data[idx:])
+	if err != nil {
+		return nil, 0, err
+	}
+	idx += tokenVar.Length
+
+	tokenLen := int(tokenVar.Value)
+	if len(data) < idx+tokenLen {
+		return nil, 0, ErrNotEnoughData
+	}
+	idx += tokenLen
+
+	if len(data) < idx+1 {
+		return nil, 0, ErrNotEnoughData
+	}
+	lengthVar, err := DecodeVarInt(data[idx:])
+	if err != nil {
+		return nil, 0, err
+	}
+	h.PayloadLength = lengthVar.Value
+	h.IsPayloadLengthPresent = true
+	idx += lengthVar.Length
+
+	h.HeaderLen = idx
+	return h, h.HeaderLen, nil
+}
+
+// DecodePacket decodes header and packet-number, returns a Packet with payload
+// (payload is remaining bytes after packet number). The receiveTime/addr are
+// set by the parser loop which constructs ParsedPacket.
+func DecodePacket(data []byte) (*Packet, error) {
+	if len(data) < 1 {
+		return nil, ErrNotEnoughData
+	}
+
+	h, headerLen, err := DecodePacketHeader(data)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(data) < headerLen+h.PacketNumberLength {
+		return nil, ErrNotEnoughData
+	}
+
+	pn := uint64(0)
+	for i := 0; i < h.PacketNumberLength; i++ {
+		pn = (pn << 8) | uint64(data[headerLen+1])
+	}
+	h.PacketNumber = pn
+
+	payloadStart := headerLen + h.PacketNumberLength
+	payload := append([]byte(nil), data[payloadStart:]...)
+
+	pkt := &Packet{
+		Header:  h,
+		Payload: payload,
+	}
+
+	return pkt, nil
+}
