@@ -1,4 +1,4 @@
-package internal
+package packet
 
 import (
 	"encoding/binary"
@@ -40,7 +40,7 @@ type Frame struct {
 
 type ParsedPacket struct {
 	Addr        *net.UDPAddr
-	Packet      Packet
+	Packet      *Packet
 	ReceiveTime time.Time
 }
 
@@ -208,7 +208,7 @@ func DecodePacket(data []byte) (*Packet, error) {
 
 	pn := uint64(0)
 	for i := 0; i < h.PacketNumberLength; i++ {
-		pn = (pn << 8) | uint64(data[headerLen+1])
+		pn = (pn << 8) | uint64(data[headerLen+i])
 	}
 	h.PacketNumber = pn
 
