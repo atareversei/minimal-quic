@@ -7,6 +7,13 @@ import (
 	"time"
 )
 
+// ReceivedPacket represents a raw packet read from UDP.
+type ReceivedPacket struct {
+	Data    []byte
+	Addr    *net.UDPAddr
+	RcvTime time.Time
+}
+
 // VarInt represents a decoded QUIC variable-length integer.
 type VarInt struct {
 	Value  uint64
@@ -33,15 +40,27 @@ type Packet struct {
 	Payload []byte
 }
 
-type Frame struct {
-	Type byte
-	Data []byte
+type Frame interface{}
+
+// StreamFrame represents a simplified QUIC STREAM frame.
+type StreamFrame struct {
+	StreamID uint64
+	Offset   uint64
+	Data     []byte
+	Fin      bool
+}
+
+// AckFrame represents a simplified QUIC ACK frame.
+type AckFrame struct {
+	LargestAcked uint64
+	AckRanges    []uint64 // optional, unused for now
 }
 
 type ParsedPacket struct {
 	Addr        *net.UDPAddr
 	Packet      *Packet
 	ReceiveTime time.Time
+	Frames      []Frame
 }
 
 var (
